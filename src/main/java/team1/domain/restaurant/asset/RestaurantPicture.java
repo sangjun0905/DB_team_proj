@@ -13,6 +13,7 @@ import team1.domain.common.BaseEntity;
 import team1.domain.restaurant.Restaurant;
 
 @Getter
+@Setter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "restaurant_picture")

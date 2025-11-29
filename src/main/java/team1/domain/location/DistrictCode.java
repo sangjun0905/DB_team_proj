@@ -1,4 +1,4 @@
-package team1.domain.code;
+package team1.domain.location;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import team1.domain.common.BaseEntity;
 
 @Getter
+@Setter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(

@@ -122,17 +122,17 @@ CREATE TABLE `reservation_slot` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `reservation_service` (
-                                       `id` CHAR(36) NOT NULL,
-                                       `reservation_id` CHAR(36) NOT NULL,
-                                       `Key` VARCHAR(255) NOT NULL,
-                                       `service_id` VARCHAR(255) NULL,
-                                       `cost` VARCHAR(255) NULL,
-                                       `description` VARCHAR(255) NULL,
-                                       `service_cnt` INT NULL,
-                                       PRIMARY KEY (`id`),
-                                       CONSTRAINT `fk_reservation_service_reservation`
-                                           FOREIGN KEY (`reservation_id`) REFERENCES `reservation`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                                                                               `id` CHAR(36) NOT NULL,
+                                                                               `reservation_id` CHAR(36) NOT NULL,
+                                                                               `Key` VARCHAR(255) NOT NULL,
+                                                                               `service_id` VARCHAR(255) NULL,
+                                                                               `cost` VARCHAR(255) NULL,
+                                                                               `description` VARCHAR(255) NULL,
+                                                                               `service_cnt` INT NULL,
+                                                                               PRIMARY KEY (`id`),
+                                                                               CONSTRAINT `fk_reservation_service_reservation`
+                                                                                   FOREIGN KEY (`reservation_id`) REFERENCES `reservation`(`id`)
+                                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. 과금 ---------------------------------------------------------------
 

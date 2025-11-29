@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 import team1.domain.common.BaseEntity;
 
 @Getter
+@Setter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "reservation_service")

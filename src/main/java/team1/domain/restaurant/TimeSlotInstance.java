@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Getter
+@Setter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "timeslot_instance")
