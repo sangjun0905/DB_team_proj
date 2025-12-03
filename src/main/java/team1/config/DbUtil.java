@@ -4,12 +4,10 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+/**
+ * DbConfig(dbconfig.ini → 환경변수 → 기본값)에서 읽은 정보로 커넥션을 생성합니다.
+ */
 public class DbUtil {
-
-    private static final String URL =
-            "jdbc:mysql://15.164.236.77:3306/";
-    private static final String USER = "root";
-    private static final String PASSWORD = "dltjdgnsx";
 
     static {
         try {
@@ -20,6 +18,7 @@ public class DbUtil {
     }
 
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
+        DbConfig db = DbConfig.load();
+        return DriverManager.getConnection(db.getUrl(), db.getUser(), db.getPass());
     }
 }
