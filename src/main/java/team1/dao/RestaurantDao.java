@@ -3,210 +3,208 @@ package team1.dao;
 import team1.config.DbUtil;
 import team1.domain.restaurant.Restaurant;
 import team1.domain.restaurant.RestaurantRoom;
-import team1.domain.restaurant.asset.RestaurantPicture;
+import team1.domain.timeslot.TimeslotInstance;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 매장 관련 조회/조작을 담당하는 DAO.
- * - restaurant
- * - restaurant_room
- * - restaurant_picture
- *
- * (도메인 클래스 필드/세터 이름은 프로젝트에 맞게 수정 필요)
- */
 public class RestaurantDao {
 
-    // =========================================================
-    // 1. 매장 기본 조회
-    // =========================================================
-
-    /**
-     * restaurant.id 기준 단건 조회. 없으면 null.
-     */
-    public Restaurant findRestaurantById(String restaurantId) throws SQLException {
-        String sql =
-                "SELECT id, user_id, `Field`, cnt_review, `Field2`, city_code_id " +
-                        "FROM restaurant " +
-                        "WHERE id = ?";
+    public Restaurant findById(String id) throws SQLException {
+        String sql = """
+            SELECT *
+            FROM restaurant
+            WHERE id = ? AND is_deleted = 0
+            """;
 
         try (Connection conn = DbUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, restaurantId);
+            ps.setString(1, id);
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return mapRestaurant(rs);
-                } else {
-                    return null;
                 }
             }
         }
+        return null;
     }
 
-    /**
-     * 도시/구 단위로 매장 목록 조회.
-     * city_code_id, district_id 기준으로 필터링하고 싶다면
-     * restaurant + district_code 조인해서 쓰면 됨.
-     *
-     * 여기서는 city_code_id만 필터 예시로 사용.
-     */
-    public List<Restaurant> findRestaurantsByCity(String cityCodeId) throws SQLException {
-        String sql =
-                "SELECT id, user_id, `Field`, cnt_review, `Field2`, city_code_id " +
-                        "FROM restaurant " +
-                        "WHERE city_code_id = ?";
+    public List<Restaurant> searchByNameOrKeyword(String keyword) throws SQLException {
+        // 이름 LIKE 검색 + 키워드 매핑 조합 예시
+        String sql = """
+            SELECT DISTINCT r.*
+            FROM restaurant r
+            LEFT JOIN restaurant_keyword_map rkm ON r.id = rkm.restaurant_id
+            LEFT JOIN restaurant_keyword rk ON rkm.keyword_id = rk.id
+            WHERE r.is_deleted = 0
+              AND (
+                    r.name LIKE CONCAT('%', ?, '%')
+                 OR rk.keyword LIKE CONCAT('%', ?, '%')
+              )
+            ORDER BY r.name
+            """;
 
-        List<Restaurant> result = new ArrayList<>();
+        List<Restaurant> list = new ArrayList<>();
 
         try (Connection conn = DbUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, cityCodeId);
+            ps.setString(1, keyword);
+            ps.setString(2, keyword);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    result.add(mapRestaurant(rs));
+                    list.add(mapRestaurant(rs));
                 }
             }
         }
-
-        return result;
+        return list;
     }
 
-    /**
-     * 이름(또는 Field2)에 LIKE 검색을 적용한 매장 검색 예시.
-     * 실제 컬럼 의미에 맞게 WHERE 절 수정해도 됨.
-     */
-    public List<Restaurant> searchRestaurantsByName(String nameKeyword) throws SQLException {
-        String sql =
-                "SELECT id, user_id, `Field`, cnt_review, `Field2`, city_code_id " +
-                        "FROM restaurant " +
-                        "WHERE `Field2` LIKE ?"; // 예: Field2를 상호명으로 쓴다고 가정
+    public List<RestaurantRoom> findRooms(String restaurantId) throws SQLException {
+        String sql = """
+            SELECT *
+            FROM restaurant_room
+            WHERE restaurant_id = ?
+              AND is_deleted = 0
+              AND is_active = 1
+            ORDER BY capacity
+            """;
 
-        List<Restaurant> result = new ArrayList<>();
+        List<RestaurantRoom> list = new ArrayList<>();
 
         try (Connection conn = DbUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, "%" + nameKeyword + "%");
+            ps.setString(1, restaurantId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    result.add(mapRestaurant(rs));
+                    RestaurantRoom room = new RestaurantRoom();
+                    room.setId(rs.getString("id"));
+                    room.setRestaurantId(rs.getString("restaurant_id"));
+                    room.setName(rs.getString("name"));
+                    room.setCapacity(rs.getInt("capacity"));
+                    room.setRoomType(rs.getString("room_type"));
+                    room.setActive(rs.getBoolean("is_active"));
+                    room.setDeleted(rs.getBoolean("is_deleted"));
+                    room.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                    room.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+                    Timestamp del = rs.getTimestamp("deleted_at");
+                    if (del != null) {
+                        room.setDeletedAt(del.toLocalDateTime());
+                    }
+                    list.add(room);
                 }
             }
         }
-
-        return result;
+        return list;
     }
 
     /**
-     * ResultSet → Restaurant 도메인 객체 매핑.
-     * Restaurant 클래스 구조에 맞게 세터 이름/타입은 맞춰서 수정.
+     * 특정 매장/날짜의 슬롯 목록 (UI에서 "예약 가능한 시간" 표시용)
      */
+    public List<TimeslotInstance> findTimeslots(String restaurantId,
+                                                LocalDate date) throws SQLException {
+        String sql = """
+            SELECT ti.*
+            FROM timeslot_instance ti
+            JOIN restaurant_timeslot_rule rtr ON ti.rule_id = rtr.id
+            WHERE rtr.restaurant_id = ?
+              AND ti.date = ?
+            ORDER BY ti.start_time
+            """;
+
+        List<TimeslotInstance> list = new ArrayList<>();
+
+        try (Connection conn = DbUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, restaurantId);
+            ps.setDate(2, Date.valueOf(date));
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    TimeslotInstance t = new TimeslotInstance();
+                    t.setId(rs.getString("id"));
+                    t.setRuleId(rs.getString("rule_id"));
+                    t.setDate(rs.getDate("date").toLocalDate());
+                    t.setStartTime(rs.getTime("start_time").toLocalTime());
+                    t.setTeamCapacity(rs.getInt("team_capacity"));
+                    t.setReservedTeam(rs.getInt("reserved_team"));
+                    t.setActive(rs.getBoolean("is_active"));
+                    t.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                    t.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+                    list.add(t);
+                }
+            }
+        }
+        return list;
+    }
+
+    // 간단 INSERT 예시 (CRUD 과제용)
+    public void insertRestaurant(Restaurant r) throws SQLException {
+        try (Connection conn = DbUtil.getConnection()) {
+            insert(conn, r);
+        }
+    }
+
+    // 트랜잭션 외부에서 제공한 커넥션을 사용해 삽입
+    public void insert(Connection conn, Restaurant r) throws SQLException {
+        String sql = """
+            INSERT INTO restaurant (
+                id, name, city_id, district_id, address, phone,
+                supports_reservation, supports_waiting,
+                avg_rating, review_count,
+                is_deleted, created_at, updated_at
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?,
+                ?, ?,
+                ?, ?,
+                0, NOW(), NOW()
+            )
+            """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, r.getId());
+            ps.setString(2, r.getName());
+            ps.setString(3, r.getCityId());
+            ps.setString(4, r.getDistrictId());
+            ps.setString(5, r.getAddress());
+            ps.setString(6, r.getPhone());
+            ps.setBoolean(7, r.isSupportsReservation());
+            ps.setBoolean(8, r.isSupportsWaiting());
+            ps.setBigDecimal(9, r.getAvgRating());
+            ps.setInt(10, r.getReviewCount());
+
+            ps.executeUpdate();
+        }
+    }
+
     private Restaurant mapRestaurant(ResultSet rs) throws SQLException {
         Restaurant r = new Restaurant();
         r.setId(rs.getString("id"));
-        r.setUserId(rs.getString("user_id"));
-        // DDL상 컬럼 이름이 Field / Field2 라서 일단 그대로 씀.
-        // 실제 도메인 필드명이 다르면 여기서 맞춰서 세팅.
-        r.setField(rs.getFloat("Field"));      // 예: 평균 평점 같은 것
-        r.setCntReview(rs.getInt("cnt_review"));
-        r.setField2(rs.getString("Field2"));   // 예: 매장명/설명 등
-        r.setCityCodeId(rs.getString("city_code_id"));
+        r.setName(rs.getString("name"));
+        r.setCityId(rs.getString("city_id"));
+        r.setDistrictId(rs.getString("district_id"));
+        r.setAddress(rs.getString("address"));
+        r.setPhone(rs.getString("phone"));
+        r.setSupportsReservation(rs.getBoolean("supports_reservation"));
+        r.setSupportsWaiting(rs.getBoolean("supports_waiting"));
+        r.setAvgRating(rs.getBigDecimal("avg_rating"));
+        r.setReviewCount(rs.getInt("review_count"));
+        r.setDeleted(rs.getBoolean("is_deleted"));
+        r.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+        r.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+        Timestamp deletedAt = rs.getTimestamp("deleted_at");
+        if (deletedAt != null) {
+            r.setDeletedAt(deletedAt.toLocalDateTime());
+        }
         return r;
     }
-
-
-    // =========================================================
-    // 2. 매장 룸(테이블) 조회
-    // =========================================================
-
-    /**
-     * 특정 매장의 룸 목록 조회.
-     */
-    public List<RestaurantRoom> findRoomsByRestaurant(String restaurantId) throws SQLException {
-        String sql =
-                "SELECT id, restaurant_id, name, capacity, room_type, " +
-                        "       is_active, description " +
-                        "FROM restaurant_room " +
-                        "WHERE restaurant_id = ? " +
-                        "ORDER BY capacity ASC";
-
-        List<RestaurantRoom> result = new ArrayList<>();
-
-        try (Connection conn = DbUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, restaurantId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    result.add(mapRestaurantRoom(rs));
-                }
-            }
-        }
-
-        return result;
-    }
-
-    private RestaurantRoom mapRestaurantRoom(ResultSet rs) throws SQLException {
-        RestaurantRoom room = new RestaurantRoom();
-        room.setId(rs.getString("id"));
-        room.setRestaurantId(rs.getString("restaurant_id"));
-        room.setName(rs.getString("name"));
-        room.setCapacity(rs.getInt("capacity"));
-        room.setRoomType(rs.getString("room_type"));
-        room.setActive(rs.getBoolean("is_active"));
-        room.setDescription(rs.getString("description"));
-        return room;
-    }
-
-
-    // =========================================================
-    // 3. 매장 사진 조회
-    // =========================================================
-
-    /**
-     * 특정 매장 사진 목록 조회.
-     */
-    public List<RestaurantPicture> findPicturesByRestaurant(String restaurantId) throws SQLException {
-        String sql =
-                "SELECT id, restaurant_picture, restaurant_id " +
-                        "FROM restaurant_picture " +
-                        "WHERE restaurant_id = ?";
-
-        List<RestaurantPicture> result = new ArrayList<>();
-
-        try (Connection conn = DbUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, restaurantId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    result.add(mapRestaurantPicture(rs));
-                }
-            }
-        }
-
-        return result;
-    }
-
-    private RestaurantPicture mapRestaurantPicture(ResultSet rs) throws SQLException {
-        RestaurantPicture pic = new RestaurantPicture();
-        pic.setId(rs.getString("id"));
-        pic.setRestaurantPicture(rs.getString("restaurant_picture"));
-        pic.setRestaurantId(rs.getString("restaurant_id"));
-        return pic;
-    }
-
-    // =========================================================
-    // 4. (옵션) 키워드 기반 검색을 하고 싶다면 여기에 추가
-    //  - restaurant_keyword, restaurant_keyword_mapping_table 조인해서 구현 가능
-    // =========================================================
 }

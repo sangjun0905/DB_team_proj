@@ -37,3 +37,6 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# Local DB config (do not commit secrets)
+dbconfig.ini
