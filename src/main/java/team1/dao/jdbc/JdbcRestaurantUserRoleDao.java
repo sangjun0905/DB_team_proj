@@ -1,5 +1,6 @@
 package team1.dao.jdbc;
 
+import org.springframework.stereotype.Repository;
 import team1.dao.RestaurantUserRoleDao;
 import team1.domain.restaurant.RestaurantUserRole;
 
@@ -8,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 
+@Repository
 public class JdbcRestaurantUserRoleDao implements RestaurantUserRoleDao {
     @Override
     public void insert(Connection conn, RestaurantUserRole role) throws SQLException {

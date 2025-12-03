@@ -1,16 +1,26 @@
 package team1.dao;
 
-import team1.config.DbUtil;
+import org.springframework.stereotype.Repository;
 import team1.domain.userrelation.Favorites;
 
-import java.sql.*;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Repository
 public class FavoritesDao {
 
-    // 즐겨찾기 추가 (이미 존재하면 무시하게 하려면 UNIQUE 제약 + IGNORE 사용도 가능)
+    private final DataSource dataSource;
+
+    public FavoritesDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
     public void addFavorite(String userId, String restaurantId) throws SQLException {
         String sql = """
             INSERT INTO favorites (
@@ -20,7 +30,7 @@ public class FavoritesDao {
             )
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, UUID.randomUUID().toString());
@@ -30,14 +40,13 @@ public class FavoritesDao {
         }
     }
 
-    // 즐겨찾기 삭제
     public void deleteFavorite(String userId, String restaurantId) throws SQLException {
         String sql = """
             DELETE FROM favorites
             WHERE user_id = ? AND restaurant_id = ?
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, userId);
@@ -46,7 +55,6 @@ public class FavoritesDao {
         }
     }
 
-    // 존재 여부 체크 (UI에서 하트 표시 등)
     public boolean existsFavorite(String userId, String restaurantId) throws SQLException {
         String sql = """
             SELECT COUNT(*)
@@ -54,7 +62,7 @@ public class FavoritesDao {
             WHERE user_id = ? AND restaurant_id = ?
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, userId);
@@ -69,7 +77,6 @@ public class FavoritesDao {
         return false;
     }
 
-    // 유저별 즐겨찾기 목록
     public List<Favorites> findByUser(String userId) throws SQLException {
         String sql = """
             SELECT *
@@ -80,7 +87,7 @@ public class FavoritesDao {
 
         List<Favorites> list = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, userId);

@@ -1,12 +1,20 @@
 package team1.dao;
 
-import team1.config.DbUtil;
-import team1.domain.user.User;
+import org.springframework.stereotype.Repository;
 import team1.domain.common.UserRole;
+import team1.domain.user.User;
 
+import javax.sql.DataSource;
 import java.sql.*;
 
+@Repository
 public class UserDao {
+
+    private final DataSource dataSource;
+
+    public UserDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     // 회원 가입
     public void insertUser(User u) throws SQLException {
@@ -20,7 +28,7 @@ public class UserDao {
             )
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, u.getId());
@@ -34,7 +42,6 @@ public class UserDao {
         }
     }
 
-    // 로그인용: 이메일로 조회
     public User findByEmail(String email) throws SQLException {
         String sql = """
             SELECT *
@@ -42,7 +49,7 @@ public class UserDao {
             WHERE email = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, email);
@@ -56,7 +63,6 @@ public class UserDao {
         return null;
     }
 
-    // 일반 PK 기반 조회
     public User findById(String id) throws SQLException {
         String sql = """
             SELECT *
@@ -64,7 +70,7 @@ public class UserDao {
             WHERE id = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, id);
@@ -78,7 +84,6 @@ public class UserDao {
         return null;
     }
 
-    // 프로필 수정 (이름/전화번호 정도만)
     public void updateUserProfile(String id, String name, String phone) throws SQLException {
         String sql = """
             UPDATE user
@@ -88,7 +93,7 @@ public class UserDao {
             WHERE id = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, name);
@@ -98,7 +103,6 @@ public class UserDao {
         }
     }
 
-    // 비밀번호 변경
     public void updatePassword(String id, String newPasswordHash) throws SQLException {
         String sql = """
             UPDATE user
@@ -107,7 +111,7 @@ public class UserDao {
             WHERE id = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, newPasswordHash);
@@ -116,7 +120,6 @@ public class UserDao {
         }
     }
 
-    // 회원 탈퇴 (soft delete) – 트리거가 deleted_at 채워줌
     public void softDeleteUser(String id) throws SQLException {
         String sql = """
             UPDATE user
@@ -125,7 +128,7 @@ public class UserDao {
             WHERE id = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, id);
@@ -133,7 +136,6 @@ public class UserDao {
         }
     }
 
-    // 내부 매핑 함수
     private User mapUser(ResultSet rs) throws SQLException {
         User u = new User();
         u.setId(rs.getString("id"));

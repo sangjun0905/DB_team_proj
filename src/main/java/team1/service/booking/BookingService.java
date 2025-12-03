@@ -1,5 +1,7 @@
 package team1.service.booking;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import team1.dto.booking.BookingResultDto;
 import team1.dto.booking.CreateReservationRequestDto;
 import team1.dto.booking.CreateWaitingRequestDto;
@@ -11,6 +13,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 
+@Service
 public class BookingService {
 
     private final DataSource dataSource;
@@ -19,6 +22,7 @@ public class BookingService {
         this.dataSource = dataSource;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public BookingResultDto createReservation(CreateReservationRequestDto request)
             throws SQLException, ReservationBusinessException {
         String sql = "{ CALL sp_create_reservation(?,?,?,?,?,?) }";
@@ -44,6 +48,7 @@ public class BookingService {
         }
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public BookingResultDto createWaiting(CreateWaitingRequestDto request)
             throws SQLException, ReservationBusinessException {
         String sql = "{ CALL sp_create_waiting(?,?,?,?,?) }";
@@ -64,6 +69,7 @@ public class BookingService {
         }
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void updateBookingState(UpdateBookingStateRequestDto request)
             throws SQLException, ReservationBusinessException {
         String sql = "{ CALL sp_update_booking_state(?,?,?,?) }";

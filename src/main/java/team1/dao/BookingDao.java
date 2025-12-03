@@ -1,6 +1,6 @@
 package team1.dao;
 
-import team1.config.DbUtil;
+import org.springframework.stereotype.Repository;
 import team1.domain.booking.Booking;
 import team1.domain.booking.BookingRoom;
 import team1.domain.booking.ReservationDetail;
@@ -8,20 +8,29 @@ import team1.domain.booking.WaitingDetail;
 import team1.domain.common.BookingState;
 import team1.domain.common.BookingType;
 
-import java.sql.*;
+import javax.sql.DataSource;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 예약/웨이팅 생성 및 상태 변경, 조회를 담당하는 DAO.
- * - sp_create_reservation
- * - sp_create_waiting
- * - sp_update_booking_state
- */
+@Repository
 public class BookingDao {
+
+    private final DataSource dataSource;
+
+    public BookingDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     /**
      * 프로시저 sp_create_reservation 호출.
@@ -36,7 +45,7 @@ public class BookingDao {
 
         String sql = "{ CALL sp_create_reservation(?,?,?,?,?,?) }";
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
 
             cs.setString(1, restaurantId);
@@ -47,10 +56,10 @@ public class BookingDao {
             if (couponId != null) {
                 cs.setString(5, couponId);
             } else {
-                cs.setNull(5, Types.CHAR);
+                cs.setNull(5, java.sql.Types.CHAR);
             }
 
-            cs.registerOutParameter(6, Types.CHAR);
+            cs.registerOutParameter(6, java.sql.Types.CHAR);
 
             cs.execute();
 
@@ -70,14 +79,14 @@ public class BookingDao {
 
         String sql = "{ CALL sp_create_waiting(?,?,?,?,?) }";
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
 
             cs.setString(1, restaurantId);
             cs.setString(2, userId);
             cs.setInt(3, persons);
             cs.setTimestamp(4, Timestamp.valueOf(waitingStartTime));
-            cs.registerOutParameter(5, Types.CHAR);
+            cs.registerOutParameter(5, java.sql.Types.CHAR);
 
             cs.execute();
 
@@ -95,7 +104,7 @@ public class BookingDao {
 
         String sql = "{ CALL sp_update_booking_state(?,?,?,?) }";
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              CallableStatement cs = conn.prepareCall(sql)) {
 
             cs.setString(1, bookingId);
@@ -118,7 +127,7 @@ public class BookingDao {
             WHERE id = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, bookingId);
@@ -142,7 +151,7 @@ public class BookingDao {
 
         List<Booking> result = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, userId);
@@ -169,7 +178,7 @@ public class BookingDao {
 
         List<Booking> result = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, restaurantId);
@@ -194,7 +203,7 @@ public class BookingDao {
             WHERE booking_id = ?
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, bookingId);
@@ -221,7 +230,7 @@ public class BookingDao {
             WHERE booking_id = ?
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, bookingId);
@@ -255,7 +264,7 @@ public class BookingDao {
 
         List<BookingRoom> rooms = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, bookingId);

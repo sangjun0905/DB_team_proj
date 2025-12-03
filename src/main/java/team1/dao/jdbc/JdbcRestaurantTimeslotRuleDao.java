@@ -1,5 +1,6 @@
 package team1.dao.jdbc;
 
+import org.springframework.stereotype.Repository;
 import team1.dao.RestaurantTimeslotRuleDao;
 import team1.domain.timeslot.RestaurantTimeslotRule;
 
@@ -9,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalTime;
 
+@Repository
 public class JdbcRestaurantTimeslotRuleDao implements RestaurantTimeslotRuleDao {
     @Override
     public void insert(Connection conn, RestaurantTimeslotRule rule) throws SQLException {

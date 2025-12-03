@@ -1,15 +1,26 @@
 package team1.dao;
 
-import team1.config.DbUtil;
+import org.springframework.stereotype.Repository;
 import team1.domain.menu.RestaurantMenu;
 import team1.domain.menu.RestaurantMenuOption;
 import team1.domain.menu.RestaurantMenuOptionGroup;
 
-import java.sql.*;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class MenuDao {
+
+    private final DataSource dataSource;
+
+    public MenuDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     public List<RestaurantMenu> findMenusByRestaurant(String restaurantId) throws SQLException {
         String sql = """
@@ -23,7 +34,7 @@ public class MenuDao {
 
         List<RestaurantMenu> list = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, restaurantId);
@@ -49,7 +60,7 @@ public class MenuDao {
         return list;
     }
 
-    public List<RestaurantMenuOptionGroup> findOptionGroups(String menuId) throws SQLException {
+    public List<RestaurantMenuOptionGroup> findGroupsByMenu(String menuId) throws SQLException {
         String sql = """
             SELECT *
             FROM restaurant_menu_option_group
@@ -59,7 +70,7 @@ public class MenuDao {
 
         List<RestaurantMenuOptionGroup> list = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, menuId);
@@ -81,7 +92,7 @@ public class MenuDao {
         return list;
     }
 
-    public List<RestaurantMenuOption> findOptions(String optionGroupId) throws SQLException {
+    public List<RestaurantMenuOption> findOptionsByGroup(String groupId) throws SQLException {
         String sql = """
             SELECT *
             FROM restaurant_menu_option
@@ -91,10 +102,10 @@ public class MenuDao {
 
         List<RestaurantMenuOption> list = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, optionGroupId);
+            ps.setString(1, groupId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -110,34 +121,5 @@ public class MenuDao {
             }
         }
         return list;
-    }
-
-    // CRUD 예시: 메뉴 하나 INSERT
-    public void insertMenu(RestaurantMenu m) throws SQLException {
-        String sql = """
-            INSERT INTO restaurant_menu (
-                id, restaurant_id, name, price, description,
-                image_url, sort_order, is_active, is_deleted,
-                created_at, updated_at
-            ) VALUES (
-                ?, ?, ?, ?, ?,
-                ?, ?, 1, 0,
-                NOW(), NOW()
-            )
-            """;
-
-        try (Connection conn = DbUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, m.getId());
-            ps.setString(2, m.getRestaurantId());
-            ps.setString(3, m.getName());
-            ps.setInt(4, m.getPrice());
-            ps.setString(5, m.getDescription());
-            ps.setString(6, m.getImageUrl());
-            ps.setInt(7, m.getSortOrder());
-
-            ps.executeUpdate();
-        }
     }
 }

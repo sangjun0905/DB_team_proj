@@ -1,5 +1,8 @@
 package team1.service.restaurant;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import team1.dao.*;
 import team1.domain.common.RestaurantStaffRole;
 import team1.domain.menu.RestaurantMenu;
@@ -11,12 +14,12 @@ import team1.dto.restaurant.*;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+@Service
 public class RestaurantRegistrationService {
 
     private final DataSource dataSource;
@@ -54,12 +57,10 @@ public class RestaurantRegistrationService {
         this.optionDao = optionDao;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public String registerRestaurant(RestaurantRegistrationRequest request) throws RestaurantRegistrationException {
-        Connection conn = null;
+        Connection conn = DataSourceUtils.getConnection(dataSource);
         try {
-            conn = dataSource.getConnection();
-            conn.setAutoCommit(false);
-
             LocalDateTime now = LocalDateTime.now();
             String restaurantId = UUID.randomUUID().toString();
 
@@ -198,24 +199,11 @@ public class RestaurantRegistrationService {
                 }
             }
 
-            conn.commit();
             return restaurantId;
         } catch (Exception e) {
-            if (conn != null) {
-                try {
-                    conn.rollback();
-                } catch (SQLException ignore) {
-                }
-            }
             throw new RestaurantRegistrationException("Failed to register restaurant", e);
         } finally {
-            if (conn != null) {
-                try {
-                    conn.setAutoCommit(true);
-                    conn.close();
-                } catch (SQLException ignore) {
-                }
-            }
+            DataSourceUtils.releaseConnection(conn, dataSource);
         }
     }
 

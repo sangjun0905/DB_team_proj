@@ -1,5 +1,6 @@
 package team1.dao.jdbc;
 
+import org.springframework.stereotype.Repository;
 import team1.dao.RestaurantBreakTimeDao;
 import team1.domain.restaurant.RestaurantBreakTime;
 
@@ -9,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalTime;
 
+@Repository
 public class JdbcRestaurantBreakTimeDao implements RestaurantBreakTimeDao {
     @Override
     public void insert(Connection conn, RestaurantBreakTime bt) throws SQLException {

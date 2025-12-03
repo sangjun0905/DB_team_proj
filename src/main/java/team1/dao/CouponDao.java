@@ -1,15 +1,23 @@
 package team1.dao;
 
-import team1.config.DbUtil;
+import org.springframework.stereotype.Repository;
 import team1.domain.coupon.Coupon;
 
+import javax.sql.DataSource;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class CouponDao {
+
+    private final DataSource dataSource;
+
+    public CouponDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     // 쿠폰 발급 (이미 생성된 template 기준)
     public void insertCoupon(Coupon c) throws SQLException {
@@ -25,7 +33,7 @@ public class CouponDao {
             )
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, c.getId());
@@ -35,7 +43,6 @@ public class CouponDao {
         }
     }
 
-    // 사용 가능한 쿠폰 목록 (기간 + 미사용 + 삭제 X)
     public List<Coupon> findAvailableCouponsForUser(String userId, LocalDate onDate) throws SQLException {
         String sql = """
             SELECT c.*
@@ -50,7 +57,7 @@ public class CouponDao {
 
         List<Coupon> list = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, userId);
@@ -66,7 +73,6 @@ public class CouponDao {
         return list;
     }
 
-    // 쿠폰 1개 조회
     public Coupon findById(String id) throws SQLException {
         String sql = """
             SELECT *
@@ -74,7 +80,7 @@ public class CouponDao {
             WHERE id = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, id);
@@ -88,7 +94,6 @@ public class CouponDao {
         return null;
     }
 
-    // 쿠폰 사용 처리 (예약 시)
     public void markUsed(String couponId, LocalDateTime usedAt) throws SQLException {
         String sql = """
             UPDATE coupon
@@ -100,7 +105,7 @@ public class CouponDao {
               AND is_used = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setTimestamp(1, Timestamp.valueOf(usedAt));
@@ -109,7 +114,6 @@ public class CouponDao {
         }
     }
 
-    // soft delete (관리자/유저가 쿠폰 삭제)
     public void softDelete(String couponId) throws SQLException {
         String sql = """
             UPDATE coupon
@@ -118,7 +122,7 @@ public class CouponDao {
             WHERE id = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, couponId);

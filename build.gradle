@@ -18,19 +18,22 @@ java {
 }
 
 application {
-    mainClass = 'team1.console.ConsoleAppLauncher'
+    mainClass = 'team1.Application'
     applicationDefaultJvmArgs = ["-Dfile.encoding=UTF-8"]
 }
 
 tasks.named('run') {
     standardInput = System.in
 }
+
+tasks.named('bootRun') {
+    mainClass = 'team1.Application'
+}
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 

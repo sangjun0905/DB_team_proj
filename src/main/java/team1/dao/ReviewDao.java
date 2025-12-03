@@ -1,13 +1,24 @@
 package team1.dao;
 
-import team1.config.DbUtil;
+import org.springframework.stereotype.Repository;
 import team1.domain.review.Review;
 
-import java.sql.*;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class ReviewDao {
+
+    private final DataSource dataSource;
+
+    public ReviewDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     // 리뷰 생성
     public void insertReview(Review r) throws SQLException {
@@ -21,13 +32,13 @@ public class ReviewDao {
             )
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, r.getId());
             ps.setString(2, r.getUserId());
             ps.setString(3, r.getBookingId());
-            ps.setInt(4, r.getRating());
+            ps.setByte(4, r.getRating());
             ps.setString(5, r.getContent());
             ps.setString(6, r.getEmbeddingVector());
 
@@ -35,62 +46,21 @@ public class ReviewDao {
         }
     }
 
-    // 리뷰 내용/별점 수정
-    public void updateReview(String reviewId, int rating, String content) throws SQLException {
-        String sql = """
-            UPDATE review
-            SET rating = ?,
-                content = ?,
-                updated_at = NOW()
-            WHERE id = ? AND is_deleted = 0
-            """;
-
-        try (Connection conn = DbUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, rating);
-            ps.setString(2, content);
-            ps.setString(3, reviewId);
-
-            ps.executeUpdate();
-        }
-    }
-
-    // 리뷰 소프트 삭제
-    public void softDeleteReview(String reviewId) throws SQLException {
-        String sql = """
-            UPDATE review
-            SET is_deleted = 1,
-                updated_at = NOW()
-            WHERE id = ? AND is_deleted = 0
-            """;
-
-        try (Connection conn = DbUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, reviewId);
-            ps.executeUpdate();
-        }
-    }
-
-    // 매장별 리뷰 목록
+    // 리뷰 조회: 식당별
     public List<Review> findByRestaurant(String restaurantId) throws SQLException {
         String sql = """
-            SELECT rv.*
-            FROM review rv
-            JOIN booking b ON rv.booking_id = b.id
+            SELECT r.*
+            FROM review r
+            JOIN booking b ON r.booking_id = b.id
             WHERE b.restaurant_id = ?
-              AND rv.is_deleted = 0
-            ORDER BY rv.created_at DESC
+              AND r.is_deleted = 0
+              AND b.is_deleted = 0
+            ORDER BY r.created_at DESC
             """;
-
         List<Review> list = new ArrayList<>();
-
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, restaurantId);
-
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapReview(rs));
@@ -100,7 +70,7 @@ public class ReviewDao {
         return list;
     }
 
-    // 유저별 리뷰 목록 (마이페이지 용)
+    // 리뷰 조회: 유저별
     public List<Review> findByUser(String userId) throws SQLException {
         String sql = """
             SELECT *
@@ -109,14 +79,10 @@ public class ReviewDao {
               AND is_deleted = 0
             ORDER BY created_at DESC
             """;
-
         List<Review> list = new ArrayList<>();
-
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, userId);
-
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapReview(rs));
@@ -124,27 +90,6 @@ public class ReviewDao {
             }
         }
         return list;
-    }
-
-    public Review findById(String reviewId) throws SQLException {
-        String sql = """
-            SELECT *
-            FROM review
-            WHERE id = ? AND is_deleted = 0
-            """;
-
-        try (Connection conn = DbUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, reviewId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return mapReview(rs);
-                }
-            }
-        }
-        return null;
     }
 
     private Review mapReview(ResultSet rs) throws SQLException {
@@ -158,7 +103,7 @@ public class ReviewDao {
         r.setDeleted(rs.getBoolean("is_deleted"));
         r.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         r.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
-        Timestamp del = rs.getTimestamp("deleted_at");
+        var del = rs.getTimestamp("deleted_at");
         if (del != null) {
             r.setDeletedAt(del.toLocalDateTime());
         }

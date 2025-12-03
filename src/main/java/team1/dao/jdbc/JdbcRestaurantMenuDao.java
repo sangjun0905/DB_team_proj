@@ -1,5 +1,6 @@
 package team1.dao.jdbc;
 
+import org.springframework.stereotype.Repository;
 import team1.dao.RestaurantMenuDao;
 import team1.domain.menu.RestaurantMenu;
 
@@ -8,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 
+@Repository
 public class JdbcRestaurantMenuDao implements RestaurantMenuDao {
     @Override
     public void insert(Connection conn, RestaurantMenu menu) throws SQLException {

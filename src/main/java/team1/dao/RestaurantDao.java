@@ -1,16 +1,24 @@
 package team1.dao;
 
-import team1.config.DbUtil;
+import org.springframework.stereotype.Repository;
 import team1.domain.restaurant.Restaurant;
 import team1.domain.restaurant.RestaurantRoom;
 import team1.domain.timeslot.TimeslotInstance;
 
+import javax.sql.DataSource;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class RestaurantDao {
+
+    private final DataSource dataSource;
+
+    public RestaurantDao(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     public Restaurant findById(String id) throws SQLException {
         String sql = """
@@ -19,7 +27,7 @@ public class RestaurantDao {
             WHERE id = ? AND is_deleted = 0
             """;
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, id);
@@ -33,8 +41,25 @@ public class RestaurantDao {
         return null;
     }
 
+    public List<Restaurant> findAll() throws SQLException {
+        String sql = """
+            SELECT *
+            FROM restaurant
+            WHERE is_deleted = 0
+            ORDER BY name
+            """;
+        List<Restaurant> list = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapRestaurant(rs));
+            }
+        }
+        return list;
+    }
+
     public List<Restaurant> searchByNameOrKeyword(String keyword) throws SQLException {
-        // 이름 LIKE 검색 + 키워드 매핑 조합 예시
         String sql = """
             SELECT DISTINCT r.*
             FROM restaurant r
@@ -50,7 +75,7 @@ public class RestaurantDao {
 
         List<Restaurant> list = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, keyword);
@@ -77,7 +102,7 @@ public class RestaurantDao {
 
         List<RestaurantRoom> list = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, restaurantId);
@@ -105,9 +130,6 @@ public class RestaurantDao {
         return list;
     }
 
-    /**
-     * 특정 매장/날짜의 슬롯 목록 (UI에서 "예약 가능한 시간" 표시용)
-     */
     public List<TimeslotInstance> findTimeslots(String restaurantId,
                                                 LocalDate date) throws SQLException {
         String sql = """
@@ -121,7 +143,7 @@ public class RestaurantDao {
 
         List<TimeslotInstance> list = new ArrayList<>();
 
-        try (Connection conn = DbUtil.getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, restaurantId);
@@ -146,14 +168,6 @@ public class RestaurantDao {
         return list;
     }
 
-    // 간단 INSERT 예시 (CRUD 과제용)
-    public void insertRestaurant(Restaurant r) throws SQLException {
-        try (Connection conn = DbUtil.getConnection()) {
-            insert(conn, r);
-        }
-    }
-
-    // 트랜잭션 외부에서 제공한 커넥션을 사용해 삽입
     public void insert(Connection conn, Restaurant r) throws SQLException {
         String sql = """
             INSERT INTO restaurant (
